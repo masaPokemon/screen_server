@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>画面共有</title>
+</head>
+<body>
+    <button id="start">画面共有開始</button>
+    <video id="video" autoplay></video>
+
+    <script>
+        const startButton = document.getElementById('start');
+        const videoElement = document.getElementById('video');
+        const ws = new WebSocket(`wss://${window.location.host}/server`);
+
+        startButton.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                videoElement.srcObject = stream;
+
+                const mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        ws.send(event.data);
+                    }
+                };
+                mediaRecorder.start(100); // 100msごとにデータを送信
+            } catch (err) {
+                console.error("Error: " + err);
+            }
+        });
+
+        ws.onmessage = (event) => {
+            const videoBlob = new Blob([event.data], { type: 'video/webm' });
+            const url = URL.createObjectURL(videoBlob);
+            const video = document.createElement('video');
+            video.src = url;
+            video.play();
+            document.body.appendChild(video);
+        };
+    </script>
+</body>
+</html>
