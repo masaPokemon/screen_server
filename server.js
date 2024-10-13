@@ -1,13 +1,26 @@
 const WebSocket = require('ws');
 
-const wss = new WebSocket.Server({ port: 8080 });
+module.exports = (req, res) => {
+    if (req.method === 'GET') {
+        res.status(200).send('WebSocket server is running');
+        return;
+    }
 
-wss.on('connection', (ws) => {
-    ws.on('message', (message) => {
-        wss.clients.forEach((client) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message);
-            }
+    const wss = new WebSocket.Server({ noServer: true });
+    
+    res.socket.server.on('upgrade', (request, socket, head) => {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+            wss.emit('connection', ws, request);
         });
     });
-});
+
+    wss.on('connection', (ws) => {
+        ws.on('message', (message) => {
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(message);
+                }
+            });
+        });
+    });
+};
