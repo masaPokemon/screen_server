@@ -3,42 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>画面共有</title>
+    <title>画面共有サイト</title>
+    <style>
+        video {
+            width: 100%;
+            height: auto;
+            border: 1px solid black;
+        }
+    </style>
 </head>
 <body>
+    <h1>画面共有サイト</h1>
     <button id="start">画面共有開始</button>
     <video id="video" autoplay></video>
 
     <script>
+        const video = document.getElementById('video');
         const startButton = document.getElementById('start');
-        const videoElement = document.getElementById('video');
-        const ws = new WebSocket(`wss://${window.location.host}/server`);
 
         startButton.addEventListener('click', async () => {
             try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                videoElement.srcObject = stream;
+                // 画面共有を開始
+                const stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                    audio: true // 音声も共有する場合
+                });
+                video.srcObject = stream;
 
-                const mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) {
-                        ws.send(event.data);
-                    }
-                };
-                mediaRecorder.start(100); // 100msごとにデータを送信
+                // ストリームの停止を監視
+                stream.getTracks().forEach(track => {
+                    track.onended = () => {
+                        console.log('画面共有が終了しました。');
+                    };
+                });
             } catch (err) {
-                console.error("Error: " + err);
+                console.error('画面共有の取得に失敗しました:', err);
             }
         });
-
-        ws.onmessage = (event) => {
-            const videoBlob = new Blob([event.data], { type: 'video/webm' });
-            const url = URL.createObjectURL(videoBlob);
-            const video = document.createElement('video');
-            video.src = url;
-            video.play();
-            document.body.appendChild(video);
-        };
     </script>
 </body>
 </html>
